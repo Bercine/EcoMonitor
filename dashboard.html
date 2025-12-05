@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>EcoMonitor Campus</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+body { font-family: Arial; margin: 20px; background: #f0f2f5; }
+h1,h2 { text-align:center; color:#333; }
+.cards { display:flex; justify-content: space-around; flex-wrap: wrap; margin-bottom:20px; }
+.card { padding:20px; margin:10px; border-radius:8px; background:white; box-shadow:0 2px 5px rgba(0,0,0,0.2); text-align:center; flex:1 0 25%; }
+#charts { display:flex; flex-wrap: wrap; justify-content: space-around; }
+canvas { background:white; border-radius:8px; margin:10px; padding:10px; }
+.section { margin:30px 0; max-width:900px; margin:auto; }
+.text { font-size:0.9em; color:#555; text-align:center; margin-bottom:20px; }
+</style>
+</head>
+<body>
+
+<h1>EcoMonitor Campus</h1>
+<p class="text">Plateforme connectée pour analyser consommation, coûts et impact numérique des salles informatiques. Les graphiques permettent de prioriser les actions et de prévoir l’avenir.</p>
+
+<div class="cards">
+    <div class="card" id="energie_totale"></div>
+    <div class="card" id="cout_total"></div>
+    <div class="card" id="score_nird"></div>
+    <div class="card" id="nb_postes_total"></div>
+</div>
+
+<div id="charts" class="section">
+<h2>Analyse par salle</h2>
+<p class="text">Visualisation de l’énergie, du coût, du score NIRD et du nombre de postes par salle.</p>
+<canvas id="chart_energy" width="400" height="200"></canvas>
+<canvas id="chart_cost" width="400" height="200"></canvas>
+<canvas id="chart_nird" width="400" height="200"></canvas>
+<canvas id="chart_nb_postes" width="400" height="200"></canvas>
+</div>
+
+<div class="section">
+<h2>Recommandations</h2>
+<p class="text">Actions prioritaires : licences coûteuses, postes en fin de vie, amélioration du score NIRD.</p>
+<canvas id="chart_reco_licences" width="400" height="200"></canvas>
+<canvas id="chart_reco_finvie" width="400" height="200"></canvas>
+<canvas id="chart_reco_nird" width="400" height="200"></canvas>
+</div>
+
+<div class="section">
+<h2>Autres indicateurs</h2>
+<p class="text">Distribution des OS, consommation vs usage et matériel recyclable.</p>
+<canvas id="chart_os" width="400" height="200"></canvas>
+<canvas id="chart_usage" width="400" height="200"></canvas>
+<canvas id="chart_recyclable" width="400" height="200"></canvas>
+</div>
+
+<div class="cards">
+    <div class="card" id="energie_future"></div>
+    <div class="card" id="cout_futur"></div>
+</div>
+
+<script>
+// Stats
+fetch("/api/stats").then(r=>r.json()).then(d=>{
+    document.getElementById("energie_totale").innerHTML="Énergie totale : "+d.energie_totale+" kWh";
+    document.getElementById("cout_total").innerHTML="Coût total : "+d.cout_total+" €";
+    document.getElementById("score_nird").innerHTML="Score NIRD moyen : "+d.score_nird_moyen.toFixed(1);
+    document.getElementById("nb_postes_total").innerHTML="Nombre total de postes : "+d.nb_postes_total;
+});
+
+// Graphiques par salle
+fetch("/api/energie_par_salle").then(r=>r.json()).then(d=>{
+    new Chart(document.getElementById('chart_energy'), {type:'bar', data:{labels:Object.keys(d), datasets:[{label:'Énergie (kWh)', data:Object.values(d), backgroundColor:'rgba(54,162,235,0.6)'}]}});
+});
+
+fetch("/api/cout_par_salle").then(r=>r.json()).then(d=>{
+    new Chart(document.getElementById('chart_cost'), {type:'bar', data:{labels:Object.keys(d), datasets:[{label:'Coût (€)', data:Object.values(d), backgroundColor:'rgba(255,99,132,0.6)'}]}});
+});
+
+fetch("/api/nird_par_salle").then(r=>r.json()).then(d=>{
+    new Chart(document.getElementById('chart_nird'), {type:'bar', data:{labels:Object.keys(d), datasets:[{label:'Score NIRD', data:Object.values(d), backgroundColor:'rgba(75,192,192,0.6)'}]}});
+});
+
+fetch("/api/nb_postes").then(r=>r.json()).then(d=>{
+    new Chart(document.getElementById('chart_nb_postes'), {type:'bar', data:{labels:Object.keys(d), datasets:[{label:'Nb postes', data:Object.values(d), backgroundColor:'purple'}]}});
+});
+
+// Recommandations
+fetch("/api/reco_licences").then(r=>r.json()).then(d=>{
+    new Chart(document.getElementById('chart_reco_licences'), {type:'bar', data:{labels:Object.keys(d), datasets:[{label:'Coût licence €', data:Object.values(d), backgroundColor:Object.values(d).map(v=>v>100?'red':'green')}]}});
+});
+
+fetch("/api/reco_finvie").then(r=>r.json()).then(d=>{
+    new Chart(document.getElementById('chart_reco_finvie'), {type:'bar', data:{labels:Object.keys(d), datasets:[{label:'Ordinateurs fin de vie', data:Object.values(d), backgroundColor:'orange'}]}});
+});
+
+fetch("/api/reco_nird").then(r=>r.json()).then(d=>{
+    new Chart(document.getElementById('chart_reco_nird'), {type:'bar', data:{labels:Object.keys(d), datasets:[{label:'Score NIRD faible', data:Object.values(d), backgroundColor:'red'}]}});
+});
+
+// Autres indicateurs
+fetch("/api/os_distribution").then(r=>r.json()).then(d=>{
+    new Chart(document.getElementById('chart_os'), {type:'pie', data:{labels:Object.keys(d), datasets:[{label:'OS', data:Object.values(d), backgroundColor:['#36a2eb','#ff6384','#ffcd56','#4bc0c0','#9966ff']}] } });
+});
+
+fetch("/api/usage_vs_energie").then(r=>r.json()).then(d=>{
+    new Chart(document.getElementById('chart_usage'), {type:'scatter', data:{datasets:[{label:'Usage vs Energie', data:d.Usage_hebdo_h.map((x,i)=>({x:x,y:d.Energie_kWh[i]})), backgroundColor:'blue'}]}, options:{scales:{x:{title:{display:true,text:'Usage hebdo (h)'}}, y:{title:{display:true,text:'Energie (kWh)'}}}}});
+});
+
+fetch("/api/recyclable").then(r=>r.json()).then(d=>{
+    new Chart(document.getElementById('chart_recyclable'), {type:'pie', data:{labels:Object.keys(d).map(k=>k=='True'?'Recyclable':'Non recyclable'), datasets:[{label:'Recyclable', data:Object.values(d), backgroundColor:['green','gray']}] } });
+});
+
+// Prédictions
+fetch("/api/predictions").then(r=>r.json()).then(d=>{
+    document.getElementById("energie_future").innerHTML="Énergie future : "+d.energie_futur+" kWh";
+    document.getElementById("cout_futur").innerHTML="Coût futur : "+d.cout_futur+" €";
+});
+</script>
+
+</body>
+</html>
